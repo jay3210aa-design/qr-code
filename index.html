@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code 工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 32px 36px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #f0f0f0;
+      margin-bottom: 28px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      color: #999;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab.active { color: #5c6bc0; border-bottom-color: #5c6bc0; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Form */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      color: #222;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 18px;
+    }
+    input[type="text"]:focus { border-color: #5c6bc0; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .field { display: flex; flex-direction: column; }
+
+    input[type="color"] {
+      width: 100%;
+      height: 42px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 4px 6px;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #222;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .logo-upload {
+      border: 2px dashed #d0d0d0;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 22px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .logo-upload:hover { border-color: #5c6bc0; background: #f5f5ff; }
+    .logo-upload input { display: none; }
+    .logo-upload-text { font-size: 13px; color: #888; }
+    .logo-upload-text span { color: #5c6bc0; font-weight: 600; }
+
+    #logo-preview {
+      max-height: 48px;
+      max-width: 120px;
+      border-radius: 4px;
+      display: none;
+      margin: 6px auto 0;
+    }
+    #remove-logo {
+      display: none;
+      font-size: 12px;
+      color: #e53935;
+      cursor: pointer;
+      margin-top: 4px;
+      background: none;
+      border: none;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: #5c6bc0;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-bottom: 24px;
+    }
+    .btn-primary:hover { background: #3f51b5; }
+    .btn-primary:active { transform: scale(0.98); }
+
+    #output {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #qr-canvas {
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      display: block;
+    }
+
+    .download-row { display: flex; gap: 10px; }
+
+    .btn-dl {
+      padding: 10px 22px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-dl:active { transform: scale(0.97); }
+    .btn-dl-png { background: #5c6bc0; color: #fff; }
+    .btn-dl-png:hover { background: #3f51b5; }
+    .btn-dl-svg { background: #f0f0f0; color: #444; }
+    .btn-dl-svg:hover { background: #e0e0e0; }
+
+    .divider {
+      width: 100%;
+      border: none;
+      border-top: 1.5px solid #f0f0f0;
+      margin: 4px 0 20px;
+    }
+
+    /* Scanner */
+    .scan-methods {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 400px) {
+      .card { padding: 24px 18px; }
+      .scan-methods { grid-template-columns: 1fr 1fr; }
+      .scan-btn { padding: 14px 6px; font-size: 12px; }
+      .scan-btn .icon { font-size: 24px; }
+    }
+
+    .scan-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 18px 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .scan-btn:hover { border-color: #5c6bc0; background: #f5f5ff; color: #5c6bc0; }
+    .scan-btn .icon { font-size: 28px; }
+    .scan-btn input { display: none; }
+
+    #scan-preview-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    #scan-video {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 12px;
+      background: #000;
+      display: block;
+    }
+
+    #scan-canvas { display: none; }
+
+    #stop-scan-btn {
+      padding: 8px 20px;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #stop-scan-btn:hover { background: #c62828; }
+
+    .scan-hint {
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    #scan-result {
+      display: none;
+      width: 100%;
+      padding: 16px;
+      background: #f0f4ff;
+      border: 1.5px solid #c5cae9;
+      border-radius: 10px;
+    }
+
+    #scan-result .result-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #5c6bc0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    #scan-result .result-text {
+      font-size: 15px;
+      color: #1a1a2e;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    #scan-result .result-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-sm {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-copy { background: #5c6bc0; color: #fff; }
+    .btn-copy:hover { background: #3f51b5; }
+    .btn-open { background: #e8f5e9; color: #2e7d32; }
+    .btn-open:hover { background: #c8e6c9; }
+
+    .scan-img-preview {
+      max-width: 100%;
+      max-height: 240px;
+      border-radius: 10px;
+      border: 1.5px solid #e0e0e0;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .error-msg {
+      color: #e53935;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .github-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1.5px solid #f0f0f0;
+      font-size: 13px;
+      color: #888;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .github-link:hover { color: #5c6bc0; }
+    .github-link svg { flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('gen')">產生 QR Code</div>
+    <div class="tab" onclick="switchTab('scan')">掃描 QR Code</div>
+  </div>
+
+  <!-- ========== 產生 ========== -->
+  <div id="panel-gen" class="tab-panel active">
+
+    <label for="qr-text">內容（網址或文字）</label>
+    <input type="text" id="qr-text" placeholder="https://example.com" />
+
+    <div class="row">
+      <div class="field">
+        <label for="qr-size">尺寸</label>
+        <select id="qr-size">
+          <option value="200">200 × 200</option>
+          <option value="300" selected>300 × 300</option>
+          <option value="400">400 × 400</option>
+          <option value="500">500 × 500</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="error-level">容錯等級</label>
+        <select id="error-level">
+          <option value="L">L（低）</option>
+          <option value="M" selected>M（中）</option>
+          <option value="Q">Q（較高）</option>
+          <option value="H">H（高）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="fg-color">前景色</label>
+        <input type="color" id="fg-color" value="#000000">
+      </div>
+      <div class="field">
+        <label for="bg-color">背景色</label>
+        <input type="color" id="bg-color" value="#ffffff">
+      </div>
+    </div>
+
+    <label>Logo（選填）</label>
+    <div class="logo-upload" id="logo-drop" onclick="document.getElementById('logo-input').click()">
+      <input type="file" id="logo-input" accept="image/*">
+      <div class="logo-upload-text">點擊或拖曳上傳 Logo<br><span>支援 PNG / JPG / SVG</span></div>
+      <img id="logo-preview" alt="logo preview">
+      <button id="remove-logo" onclick="removeLogo(event)">✕ 移除 Logo</button>
+    </div>
+
+    <button class="btn-primary" onclick="generate()">產生 QR Code</button>
+
+    <div id="output">
+      <hr class="divider">
+      <canvas id="qr-canvas"></canvas>
+      <div class="download-row">
+        <button class="btn-dl btn-dl-png" onclick="downloadPNG()">下載 PNG</button>
+        <button class="btn-dl btn-dl-svg" onclick="downloadSVG()">下載 SVG</button>
+      </div>
+    </div>
+
+  </div><!-- /panel-gen -->
+
+  <!-- ========== 掃描 ========== -->
+  <div id="panel-scan" class="tab-panel">
+
+    <p class="scan-hint">選擇掃描來源：</p>
+
+    <div class="scan-methods">
+      <!-- Upload -->
+      <label class="scan-btn" title="上傳含QR Code的圖片">
+        <span class="icon">🖼️</span>
+        上傳圖片
+        <input type="file" id="scan-file-input" accept="image/*" onchange="scanFromFile(this)">
+      </label>
+
+      <!-- Screen capture -->
+      <button class="scan-btn" id="btn-screen" onclick="scanFromScreen()" title="擷取螢幕畫面並掃描">
+        <span class="icon">🖥️</span>
+        螢幕擷取
+      </button>
+
+      <!-- Camera -->
+      <button class="scan-btn" onclick="scanFromCamera()" title="開啟相機掃描">
+        <span class="icon">📷</span>
+        相機掃描
+      </button>
+    </div>
+
+    <div id="scan-preview-wrap">
+      <video id="scan-video" autoplay muted playsinline></video>
+      <canvas id="scan-canvas"></canvas>
+      <button id="stop-scan-btn" onclick="stopScan()">停止掃描</button>
+    </div>
+
+    <div id="scan-error" class="error-msg"></div>
+
+    <div id="scan-result">
+      <div class="result-label">掃描結果</div>
+      <div class="result-text" id="scan-result-text"></div>
+      <div class="result-actions">
+        <button class="btn-sm btn-copy" onclick="copyResult()">複製</button>
+        <button class="btn-sm btn-open" id="btn-open-link" onclick="openLink()" style="display:none">開啟連結</button>
+      </div>
+    </div>
+
+  </div><!-- /panel-scan -->
+
+  <a class="github-link" href="https://github.com/jay3210aa-design/qr-code" target="_blank" rel="noopener">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+               0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+               -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+               .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+               -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+               .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+               .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+               0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    jay3210aa-design / qr-code
+  </a>
+</div><!-- /card -->
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+// ─── Tab switch ──────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const ids = ['gen', 'scan'];
+    t.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  if (id !== 'scan') stopScan();
+}
+
+// ─── Generator ───────────────────────────────────────────────
+let logoDataURL = null;
+let lastText = '';
+let lastOptions = {};
+
+document.getElementById('logo-input').addEventListener('change', e => {
+  loadLogoFile(e.target.files[0]);
+});
+
+const logoDrop = document.getElementById('logo-drop');
+logoDrop.addEventListener('dragover', e => { e.preventDefault(); logoDrop.style.borderColor = '#5c6bc0'; });
+logoDrop.addEventListener('dragleave', () => { logoDrop.style.borderColor = '#d0d0d0'; });
+logoDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  logoDrop.style.borderColor = '#d0d0d0';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadLogoFile(file);
+});
+
+function loadLogoFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    logoDataURL = ev.target.result;
+    document.getElementById('logo-preview').src = logoDataURL;
+    document.getElementById('logo-preview').style.display = 'block';
+    document.getElementById('remove-logo').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo(e) {
+  e.stopPropagation();
+  logoDataURL = null;
+  document.getElementById('logo-input').value = '';
+  document.getElementById('logo-preview').style.display = 'none';
+  document.getElementById('remove-logo').style.display = 'none';
+}
+
+function generate() {
+  const text  = document.getElementById('qr-text').value.trim();
+  if (!text) { alert('請輸入網址或文字！'); return; }
+  const size  = parseInt(document.getElementById('qr-size').value);
+  const level = document.getElementById('error-level').value;
+  const fg    = document.getElementById('fg-color').value;
+  const bg    = document.getElementById('bg-color').value;
+
+  lastText    = text;
+  lastOptions = { size, level, fg, bg };
+
+  try {
+    const qr = qrcode(0, level);
+    qr.addData(text);
+    qr.make();
+
+    const moduleCount = qr.getModuleCount();
+    const margin = 2;
+    const total  = moduleCount + margin * 2;
+    const cell   = Math.floor(size / total);
+    const actual = cell * total;
+
+    const canvas = document.getElementById('qr-canvas');
+    canvas.width  = actual;
+    canvas.height = actual;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, actual, actual);
+
+    ctx.fillStyle = fg;
+    for (let r = 0; r < moduleCount; r++) {
+      for (let c = 0; c < moduleCount; c++) {
+        if (qr.isDark(r, c)) {
+          ctx.fillRect((c + margin) * cell, (r + margin) * cell, cell, cell);
+        }
+      }
+    }
+
+    if (logoDataURL) overlayLogo(canvas, actual, bg);
+
+    document.getElementById('output').style.display = 'flex';
+  } catch (err) {
+    alert('產生失敗：' + err.message);
+  }
+}
+
+function overlayLogo(canvas, size, bg) {
+  const ctx = canvas.getContext('2d');
+  const logo = new Image();
+  logo.onload = () => {
+    const ls = size * 0.22, pad = 8, r = 10;
+    const lx = (size - ls) / 2, ly = (size - ls) / 2;
+    const x = lx - pad, y = ly - pad, w = ls + pad*2, h = ls + pad*2;
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath(); ctx.fill();
+    ctx.drawImage(logo, lx, ly, ls, ls);
+  };
+  logo.src = logoDataURL;
+}
+
+function downloadPNG() {
+  const a = document.createElement('a');
+  a.download = 'qrcode.png';
+  a.href = document.getElementById('qr-canvas').toDataURL('image/png');
+  a.click();
+}
+
+function downloadSVG() {
+  if (!lastText) return;
+  const { size, level, fg, bg } = lastOptions;
+  const qr = qrcode(0, level);
+  qr.addData(lastText); qr.make();
+  const mc = qr.getModuleCount(), margin = 2;
+  const cell = Math.floor(size / (mc + margin*2));
+  const actual = cell * (mc + margin*2);
+  let rects = '';
+  for (let r = 0; r < mc; r++)
+    for (let c = 0; c < mc; c++)
+      if (qr.isDark(r, c))
+        rects += `<rect x="${(c+margin)*cell}" y="${(r+margin)*cell}" width="${cell}" height="${cell}" fill="${fg}"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${actual}" height="${actual}"><rect width="${actual}" height="${actual}" fill="${bg}"/>${rects}</svg>`;
+  const a = document.createElement('a');
+  a.download = 'qrcode.svg';
+  a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  a.click();
+}
+
+document.getElementById('qr-text').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generate();
+});
+
+// ─── iOS detection ───────────────────────────────────────────
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+if (isIOS || !navigator.mediaDevices?.getDisplayMedia) {
+  const btn = document.getElementById('btn-screen');
+  if (btn) {
+    btn.style.opacity = '0.35';
+    btn.style.cursor  = 'not-allowed';
+    btn.title = 'iOS 不支援螢幕擷取';
+    btn.onclick = () => showScanError('iOS Safari 不支援螢幕擷取功能。');
+  }
+}
+
+// ─── Scanner ─────────────────────────────────────────────────
+let scanStream = null;
+let scanLoop   = null;
+
+function showScanError(msg) {
+  const el = document.getElementById('scan-error');
+  el.textContent = msg;
+  setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+function showScanResult(text) {
+  stopScan();
+  const wrap = document.getElementById('scan-result');
+  document.getElementById('scan-result-text').textContent = text;
+  const isURL = /^https?:\/\//i.test(text);
+  document.getElementById('btn-open-link').style.display = isURL ? 'inline-block' : 'none';
+  wrap.style.display = 'block';
+}
+
+function copyResult() {
+  const text = document.getElementById('scan-result-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = '已複製！';
+    setTimeout(() => btn.textContent = '複製', 1500);
+  });
+}
+
+function openLink() {
+  window.open(document.getElementById('scan-result-text').textContent, '_blank');
+}
+
+// Decode ImageData using jsQR (+ BarcodeDetector fallback)
+async function decodeImageData(imageData, w, h) {
+  // Try jsQR first
+  const result = jsQR(imageData.data, w, h);
+  if (result) return result.data;
+
+  // Fallback: BarcodeDetector (Chrome/Safari)
+  if ('BarcodeDetector' in window) {
+    try {
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = w; tmpCanvas.height = h;
+      tmpCanvas.getContext('2d').putImageData(imageData, 0, 0);
+      const bitmap = await createImageBitmap(tmpCanvas);
+      const codes = await detector.detect(bitmap);
+      if (codes.length > 0) return codes[0].rawValue;
+    } catch (_) {}
+  }
+  return null;
+}
+
+// ── 1. Upload image ──
+function scanFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('scan-result').style.display = 'none';
+
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = async () => {
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width  = img.width;
+    tmpCanvas.height = img.height;
+    const ctx = tmpCanvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imgData = ctx.getImageData(0, 0, img.width, img.height);
+    const result = await decodeImageData(imgData, img.width, img.height);
+    URL.revokeObjectURL(url);
+    input.value = '';
+    if (result) {
+      showScanResult(result);
+    } else {
+      showScanError('找不到 QR Code，請確認圖片清晰且包含完整 QR Code。');
+    }
+  };
+  img.src = url;
+}
+
+// ── 2. Screen capture ──
+async function scanFromScreen() {
+  document.getElementById('scan-result').style.display = 'none';
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    const video  = document.getElementById('scan-video');
+    const previewWrap = document.getElementById('scan-preview-wrap');
+
+    video.srcObject = stream;
+    scanStream = stream;
+    previewWrap.style.display = 'flex';
+
+    video.onloadedmetadata = () => {
+      video.play();
+      startFrameLoop(video, '螢幕擷取');
+    };
+
+    // Auto-stop when user stops sharing
+    stream.getVideoTracks()[0].addEventListener('ended', stopScan);
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') showScanError('螢幕擷取失敗：' + err.message);
+  }
+}
+
+// ── 3. Camera ──
+async function scanFromCamera() {
+  document.getElementById('scan-result').style.display = 'none';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    const video = document.getElementById('scan-video');
+    const previewWrap = document.getElementById('scan-preview-wrap');
+
+    video.srcObject = stream;
+    scanStream = stream;
+    previewWrap.style.display = 'flex';
+
+    video.onloadedmetadata = () => {
+      video.play();
+      startFrameLoop(video, '相機');
+    };
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') showScanError('無法開啟相機：' + err.message);
+    else showScanError('請允許相機權限後再試。');
+  }
+}
+
+function startFrameLoop(video, source) {
+  const canvas = document.getElementById('scan-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  async function tick() {
+    if (!scanStream) return;
+    if (video.readyState < 2) { scanLoop = requestAnimationFrame(tick); return; }
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const result  = await decodeImageData(imgData, canvas.width, canvas.height);
+
+    if (result) {
+      showScanResult(result);
+    } else {
+      scanLoop = requestAnimationFrame(tick);
+    }
+  }
+
+  scanLoop = requestAnimationFrame(tick);
+}
+
+function stopScan() {
+  if (scanLoop) { cancelAnimationFrame(scanLoop); scanLoop = null; }
+  if (scanStream) {
+    scanStream.getTracks().forEach(t => t.stop());
+    scanStream = null;
+  }
+  const video = document.getElementById('scan-video');
+  video.srcObject = null;
+  document.getElementById('scan-preview-wrap').style.display = 'none';
+}
+</script>
+</body>
+</html>
